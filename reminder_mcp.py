@@ -220,8 +220,8 @@ def create_calendar_event(title, start_date, end_date, calendar_name=None, locat
 
     Args:
         title: イベントのタイトル
-        start_date: 開始日時 (YYYY-MM-DD HH:MM:SS形式)
-        end_date: 終了日時 (YYYY-MM-DD HH:MM:SS形式)
+        start_date: 開始日時 (YYYY-MM-DDThh:mm:ss形式)
+        end_date: 終了日時 (YYYY-MM-DDThh:mm:ss形式)
         calendar_name: カレンダー名 (Noneの場合はデフォルトカレンダー)
         location: 場所
         notes: メモ
@@ -236,15 +236,59 @@ def create_calendar_event(title, start_date, end_date, calendar_name=None, locat
         else:
             return False
 
+    # ISO形式の日付文字列をAppleScriptで扱える形式に変換
+    try:
+        start_date_obj = datetime.datetime.fromisoformat(start_date)
+        end_date_obj = datetime.datetime.fromisoformat(end_date)
+        
+        # 日付のコンポーネントを取得
+        start_year = start_date_obj.year
+        start_month = start_date_obj.month
+        start_day = start_date_obj.day
+        start_hour = start_date_obj.hour
+        start_minute = start_date_obj.minute
+        
+        end_year = end_date_obj.year
+        end_month = end_date_obj.month
+        end_day = end_date_obj.day
+        end_hour = end_date_obj.hour
+        end_minute = end_date_obj.minute
+        
+        print(f"Creating event: {title} from {start_date_obj} to {end_date_obj} in calendar '{calendar_name}'")
+    except ValueError:
+        print(f"Invalid date format: start_date={start_date}, end_date={end_date}")
+        return False
+
+    # AppleScriptで日付コンポーネントを直接設定
     script = f'''
     tell application "Calendar"
         tell calendar "{calendar_name}"
-            make new event with properties {{summary:"{title}", start date:date "{start_date}", end date:date "{end_date}", location:"{location}", description:"{notes}"}}
-            return "Event created successfully"
+            -- 開始日時の設定
+            set startDate to current date
+            set year of startDate to {start_year}
+            set month of startDate to {start_month}
+            set day of startDate to {start_day}
+            set hours of startDate to {start_hour}
+            set minutes of startDate to {start_minute}
+            set seconds of startDate to 0
+            
+            -- 終了日時の設定
+            set endDate to current date
+            set year of endDate to {end_year}
+            set month of endDate to {end_month}
+            set day of endDate to {end_day}
+            set hours of endDate to {end_hour}
+            set minutes of endDate to {end_minute}
+            set seconds of endDate to 0
+            
+            -- イベントの作成
+            make new event with properties {{summary:"{title}", start date:startDate, end date:endDate, location:"{location}", description:"{notes}"}}
+            return "Event created successfully in {calendar_name} from " & (startDate as string) & " to " & (endDate as string)
         end tell
     end tell
     '''
     result = run_applescript(script)
+    print(f"AppleScript result: {result}")  # デバッグ用
     return result is not None and "successfully" in result
 
 def get_calendar_events(start_date, end_date, calendar_name=None):
@@ -252,8 +296,8 @@ def get_calendar_events(start_date, end_date, calendar_name=None):
     指定した期間のイベントを取得する。
 
     Args:
-        start_date: 開始日時 (YYYY-MM-DD形式)
-        end_date: 終了日時 (YYYY-MM-DD形式)
+        start_date: 開始日時 (YYYY-MM-DDThh:mm:ss形式)
+        end_date: 終了日時 (YYYY-MM-DDThh:mm:ss形式)
         calendar_name: カレンダー名 (Noneの場合はデフォルトカレンダー)
 
     Returns:
@@ -266,48 +310,93 @@ def get_calendar_events(start_date, end_date, calendar_name=None):
         else:
             return []
 
+    # ISO形式の日付文字列をdatetimeオブジェクトに変換
+    try:
+        start_date_obj = datetime.datetime.fromisoformat(start_date)
+        end_date_obj = datetime.datetime.fromisoformat(end_date)
+        
+        # 日付のコンポーネントを取得
+        start_year = start_date_obj.year
+        start_month = start_date_obj.month
+        start_day = start_date_obj.day
+        
+        end_year = end_date_obj.year
+        end_month = end_date_obj.month
+        end_day = end_date_obj.day
+        
+        print(f"Searching for events from {start_date_obj.date()} to {end_date_obj.date()} in calendar '{calendar_name}'")
+    except ValueError:
+        print(f"Invalid date format: start_date={start_date}, end_date={end_date}")
+        return []
+
+    # 日付範囲を指定してイベントを取得するAppleScript
     script = f'''
     tell application "Calendar"
         tell calendar "{calendar_name}"
-            set eventList to events whose start date is greater than or equal to date "{start_date}" and start date is less than or equal to date "{end_date}"
-            set jsonEvents to "["
-            repeat with i from 1 to count of eventList
-                set currentEvent to item i of eventList
-                set eventTitle to summary of currentEvent
-                set eventStart to start date of currentEvent
-                set eventEnd to end date of currentEvent
-                set eventLoc to location of currentEvent
-                if eventLoc is missing value then
-                    set eventLoc to ""
-                end if
+            -- 開始日時の設定
+            set startDate to current date
+            set year of startDate to {start_year}
+            set month of startDate to {start_month}
+            set day of startDate to {start_day}
+            set hours of startDate to 0
+            set minutes of startDate to 0
+            set seconds of startDate to 0
+            
+            -- 終了日時の設定
+            set endDate to current date
+            set year of endDate to {end_year}
+            set month of endDate to {end_month}
+            set day of endDate to {end_day}
+            set hours of endDate to 23
+            set minutes of endDate to 59
+            set seconds of endDate to 59
+            
+            -- 日付範囲内のイベントを取得
+            set matchingEvents to (events whose start date ≥ startDate and start date ≤ endDate)
+            
+            set eventData to ""
+            repeat with e in matchingEvents
+                set eventTitle to summary of e
+                set eventStart to start date of e as string
+                set eventEnd to end date of e as string
+                set eventLoc to ""
+                try
+                    set eventLoc to location of e
+                    if eventLoc is missing value then
+                        set eventLoc to ""
+                    end if
+                end try
                 
-                set jsonEvent to "{{\\"title\\":\\""
-                set jsonEvent to jsonEvent & eventTitle & "\\","
-                set jsonEvent to jsonEvent & "\\"start\\":\\""
-                set jsonEvent to jsonEvent & eventStart & "\\","
-                set jsonEvent to jsonEvent & "\\"end\\":\\""
-                set jsonEvent to jsonEvent & eventEnd & "\\","
-                set jsonEvent to jsonEvent & "\\"location\\":\\""
-                set jsonEvent to jsonEvent & eventLoc & "\\"}}"
-                
-                set jsonEvents to jsonEvents & jsonEvent
-                if i < count of eventList then
-                    set jsonEvents to jsonEvents & ", "
-                end if
+                -- 区切り文字として使用しない特殊な文字を使用
+                set eventData to eventData & eventTitle & "§§§" & eventStart & "§§§" & eventEnd & "§§§" & eventLoc & "\\n"
             end repeat
-            set jsonEvents to jsonEvents & "]"
-            return jsonEvents
+            return eventData
         end tell
     end tell
     '''
     result = run_applescript(script)
-    if result:
-        try:
-            return json.loads(result)
-        except json.JSONDecodeError:
-            print(f"Failed to parse JSON: {result}")
-            return []
-    return []
+    print(f"AppleScript result: {result}")  # デバッグ用
+    
+    events = []
+    
+    if result and result.strip():
+        lines = result.strip().split("\\n")
+        for line in lines:
+            if not line.strip():
+                continue
+            parts = line.split("§§§")
+            if len(parts) >= 3:
+                event = {
+                    "title": parts[0],
+                    "start": parts[1],
+                    "end": parts[2],
+                    "location": parts[3] if len(parts) > 3 else ""
+                }
+                events.append(event)
+                print(f"Event: {event['title']} - {event['start']} to {event['end']}")
+    
+    print(f"Found {len(events)} events in calendar '{calendar_name}' from {start_date_obj.date()} to {end_date_obj.date()}")
+    return events
 
 # 時間関連の関数 (新機能)
 def get_current_time():
@@ -371,13 +460,13 @@ async def list_calendars_mcp():
     return {"calendars": get_calendars()}
 
 @mcp.tool("create_calendar_event")
-async def create_calendar_event_mcp(title: str, start_date: str, end_date: str, calendar_name: Optional[str] = None, location: str = "", notes: str = ""):
+async def create_calendar_event_mcp(title: str, start_date: str, end_date: str, calendar_name=None, location: str = "", notes: str = ""):
     """カレンダーにイベントを作成します。"""
     success = create_calendar_event(title, start_date, end_date, calendar_name, location, notes)
     return {"result": "Event created successfully" if success else "Failed to create event"}
 
 @mcp.tool("get_calendar_events")
-async def get_calendar_events_mcp(start_date: str, end_date: str, calendar_name: Optional[str] = None):
+async def get_calendar_events_mcp(start_date: str, end_date: str, calendar_name=None):
     """指定した期間のカレンダーイベントを取得します。"""
     events = get_calendar_events(start_date, end_date, calendar_name)
     return {"events": events}
