@@ -1,88 +1,146 @@
-# リマインダーMCPサーバー
+# リマインダー・カレンダー MCP サーバー
 
-macOSのリマインダーアプリと連携するModel Context Protocol (MCP) サーバーです。このサーバーを使用すると、AIアシスタントがmacOSのリマインダーアプリを操作できるようになります。
+macOSのリマインダーアプリとカレンダーアプリに連携するMCPサーバーを提供するツールです。このサーバーを使用することで、リマインダーの管理、カレンダーイベントの作成・取得、現在時刻の取得などの機能をAPI経由で利用できます。
 
 ## 機能
 
-このMCPサーバーは以下の機能を提供します：
+- **リマインダー関連**
+  - 未完了のリマインダー一覧を取得
+  - 特定のリマインダーの詳細を取得
+  - リマインダーを完了済みにマーク
+  - リマインダーを削除
+  - リマインダー名を更新
+  - 新しいリマインダーを追加
 
-- **リマインダーの一覧表示**: 未完了のリマインダーを一覧表示
-- **リマインダーの詳細取得**: 特定のリマインダーの詳細情報を取得
-- **リマインダーの完了**: リマインダーを完了済みにマーク
-- **リマインダーの削除**: リマインダーを削除
-- **リマインダー名の更新**: リマインダーの名前を変更
-- **リマインダーの追加**: 新しいリマインダーを作成
+- **カレンダー関連**
+  - 利用可能なカレンダーの一覧を取得
+  - カレンダーにイベントを作成
+  - 指定した期間のカレンダーイベントを取得
+
+- **時間関連**
+  - 現在時刻を様々なフォーマットで取得（ISO形式、日本語形式、各要素など）
 
 ## 必要条件
 
-- macOS（AppleScriptによるリマインダーアプリ連携のため）
-- Python 3.7以上
-- リマインダーアプリへのアクセス権限
+- macOS（AppleScriptを使用するため）
+- Python 3.8以上
+- macOSのリマインダーアプリとカレンダーアプリ
 
 ## インストール
 
+1. リポジトリをクローン
 ```bash
-# リポジトリをクローン
 git clone https://github.com/yourusername/reminder-mcp.git
 cd reminder-mcp
+```
 
-# 依存関係のインストール
+2. 必要なライブラリをインストール
+```bash
 pip install -r requirements.txt
 ```
 
-## 使用方法
+## 使い方
 
 ### MCPサーバーの起動
 
 ```bash
-# デフォルトポート（2501）でMCPサーバーを起動
 python reminder_mcp.py
+```
 
-# カスタムポートでMCPサーバーを起動
+デフォルトでは、ポート2501でサーバーが起動します。別のポートを指定する場合：
+
+```bash
 python reminder_mcp.py --port 3000
 ```
 
-## 提供されるMCPツール
+### APIエンドポイント
 
-このMCPサーバーは以下のツールを提供します：
+MCPサーバーは以下のエンドポイントを提供します：
 
-1. **list_reminders**: 未完了のリマインダー一覧を取得
-   - パラメータ: なし
-   - 戻り値: リマインダー名のリスト
+#### リマインダー関連
 
-2. **get_reminder**: 特定のリマインダーの詳細を取得
-   - パラメータ: `name` (リマインダー名)
-   - 戻り値: リマインダーの詳細情報
+- `list_reminders`: 未完了のリマインダー一覧を取得
+- `get_reminder`: 特定のリマインダーの詳細を取得（パラメータ: `name`）
+- `complete_reminder`: リマインダーを完了済みにマーク（パラメータ: `name`）
+- `delete_reminder`: リマインダーを削除（パラメータ: `name`）
+- `update_reminder`: リマインダー名を更新（パラメータ: `old_name`, `new_name`）
+- `add_reminder`: 新しいリマインダーを追加（パラメータ: `name`, `body`(オプション)）
 
-3. **complete_reminder**: リマインダーを完了済みにマーク
-   - パラメータ: `name` (リマインダー名)
-   - 戻り値: 操作結果
+#### カレンダー関連
 
-4. **delete_reminder**: リマインダーを削除
-   - パラメータ: `name` (リマインダー名)
-   - 戻り値: 操作結果
+- `list_calendars`: 利用可能なカレンダーの一覧を取得
+- `create_calendar_event`: カレンダーにイベントを作成（パラメータ: `title`, `start_date`, `end_date`, `calendar_name`(オプション), `location`(オプション), `notes`(オプション)）
+- `get_calendar_events`: 指定した期間のカレンダーイベントを取得（パラメータ: `start_date`, `end_date`, `calendar_name`(オプション)）
 
-5. **update_reminder**: リマインダー名を更新
-   - パラメータ: `old_name` (現在の名前), `new_name` (新しい名前)
-   - 戻り値: 操作結果
+#### 時間関連
 
-6. **add_reminder**: 新しいリマインダーを追加
-   - パラメータ: `name` (リマインダー名), `body` (詳細、オプション)
-   - 戻り値: 操作結果
+- `get_current_time`: 現在時刻を様々なフォーマットで取得
 
-## 技術仕様
+### 使用例
 
-- **言語**: Python
-- **依存関係**:
-  - mcp: Model Control Protocolの実装
-  - pydantic: データバリデーション
-  - requests: HTTP通信
-- **アーキテクチャ**:
-  - AppleScriptを使用してmacOSリマインダーアプリと連携
-  - MCPサーバーとしてAIアシスタントに機能を提供
-  - 非同期処理によるレスポンス性能の向上
+#### リマインダー一覧の取得
 
-## トラブルシューティング
+```python
+import requests
 
-- **リマインダーアプリへのアクセス権限**: 初回実行時にmacOSからリマインダーアプリへのアクセス許可を求められることがあります。
-- **ポート競合**: 指定したポートが既に使用されている場合は、別のポート番号を指定してください。
+response = requests.post("http://localhost:2501/mcp", json={
+    "name": "list_reminders",
+    "arguments": {}
+})
+print(response.json())
+```
+
+#### 新しいリマインダーの追加
+
+```python
+import requests
+
+response = requests.post("http://localhost:2501/mcp", json={
+    "name": "add_reminder",
+    "arguments": {
+        "name": "買い物に行く",
+        "body": "牛乳、卵、パンを買う"
+    }
+})
+print(response.json())
+```
+
+#### カレンダーイベントの作成
+
+```python
+import requests
+
+response = requests.post("http://localhost:2501/mcp", json={
+    "name": "create_calendar_event",
+    "arguments": {
+        "title": "会議",
+        "start_date": "2023-12-25 14:00:00",
+        "end_date": "2023-12-25 15:00:00",
+        "location": "会議室A",
+        "notes": "プロジェクトの進捗確認"
+    }
+})
+print(response.json())
+```
+
+#### 現在時刻の取得
+
+```python
+import requests
+
+response = requests.post("http://localhost:2501/mcp", json={
+    "name": "get_current_time",
+    "arguments": {}
+})
+print(response.json())
+```
+
+## 注意事項
+
+- このツールはmacOSのAppleScriptを使用しているため、macOSでのみ動作します。
+- リマインダーアプリとカレンダーアプリへのアクセス権限が必要です。初回実行時に権限を求められる場合があります。
+- 日付形式は `YYYY-MM-DD HH:MM:SS` 形式で指定してください。
+
+## ライセンス
+
+MIT
